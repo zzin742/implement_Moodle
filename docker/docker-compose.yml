@@ -21,7 +21,7 @@ services:
     # Carrega as variáveis de ambiente a partir do .env.example
     # TODO: Em produção, use o arquivo .env (sem valores de exemplo)
     env_file:
-      - .env.example
+      - .env
 
     # Healthcheck: aguarda o PostgreSQL aceitar conexões antes de liberar o Moodle
     healthcheck:
@@ -57,7 +57,7 @@ services:
 
     # Carrega as variáveis de ambiente a partir do .env.example
     env_file:
-      - .env.example
+      - .env
 
     # Passa as variáveis de conexão ao banco de dados para o contêiner Moodle
     environment:

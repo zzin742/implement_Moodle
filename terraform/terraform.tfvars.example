@@ -1,0 +1,25 @@
+# TODO: Copie este arquivo para terraform.tfvars e preencha com seus valores reais
+# NUNCA commite o arquivo terraform.tfvars (já está no .gitignore)
+
+aws_region         = "us-east-1"
+project_name       = "moodle-challenge"
+vpc_cidr           = "10.0.0.0/16"
+ec2_instance_type  = "t3.medium"
+rds_instance_class = "db.t3.micro"
+
+# TODO: Substitua pela sua chave pública SSH (cat ~/.ssh/id_rsa.pub)
+ec2_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ..."
+
+# TODO: Restrinja ao seu IP para segurança (obtenha em https://ifconfig.me)
+ssh_allowed_cidr = "0.0.0.0/0" # ATENÇÃO: aberto para qualquer IP - restrinja em produção!
+
+# TODO: Use credenciais fortes e únicas
+db_username = "moodle"
+db_password = "CHANGEME_StrongPassword123!"
+db_name     = "moodle"
+
+# TODO: Configure o repositório e credenciais do Moodle
+repo_url             = "https://github.com/zzin742/implement_Moodle.git"
+moodle_admin_user    = "admin"
+moodle_admin_password = "CHANGEME_MoodleAdmin456!"
+moodle_site_name     = "Moodle Challenge"

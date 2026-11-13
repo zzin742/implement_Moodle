@@ -164,3 +164,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Diretorio de trabalho do terraform init: contem symlinks para o cache
+# local de providers (centenas de MB) e nao faz sentido versionar.
+.terraform/
