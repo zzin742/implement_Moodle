@@ -20,9 +20,12 @@ jobs:
   terraform-validate:
     name: Validate Terraform
     runs-on: ubuntu-latest
-    # Só executa se o arquivo terraform/versions.tf existir, pois os alunos
-    # precisam criar o diretório terraform/ como parte do desafio.
-    if: ${{ hashFiles('terraform/versions.tf') != '' }}
+    # O guarda original aqui era `if: hashFiles('terraform/versions.tf') != ''`,
+    # para o workflow nao falhar em forks que ainda nao criaram o diretorio
+    # terraform/. Removido: o `if` de job e avaliado antes de qualquer checkout,
+    # entao nao existe workspace para o hashFiles ler. Neste fork o diretorio
+    # terraform/ existe desde o commit bacd02d, e o filtro de paths do gatilho
+    # ja garante que o workflow so roda quando algo em terraform/ muda.
 
     steps:
       # Faz o checkout do repositório para que o runner tenha acesso ao código

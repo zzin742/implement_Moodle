@@ -1,3 +1,5 @@
+# Provider e versao minima do Terraform. Unico .tf sem `# TODO:` por
+# definicao do tests/test_todo_comments.py.
 terraform {
   required_version = ">= 1.5.0"
 
