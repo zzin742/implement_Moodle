@@ -17,11 +17,24 @@ jobs:
       - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      # Executa o hadolint para análise estática do Dockerfile e verifica boas práticas
-      # TODO: adicione flags --ignore <RULE> aqui se quiser suprimir regras específicas,
-      #       ex: docker run --rm -i hadolint/hadolint hadolint --ignore DL3008 -
+      # Executa o hadolint para análise estática do Dockerfile e verifica boas práticas.
+      #
+      # Duas regras estão suprimidas, e as duas pelo mesmo motivo: o CHALLENGE.md
+      # proíbe alterar o docker/Dockerfile, então não há como agir sobre o que elas
+      # apontam. Suprimir aqui é honesto; o contrário seria um pipeline vermelho
+      # permanente por algo que o aluno não pode corrigir.
+      #
+      #   DL3008 (warning) — "Pin versions in apt get install". Fixar a versão de
+      #   cada pacote apt quebraria o build assim que a imagem base atualizasse os
+      #   repositórios, que é justamente o que uma imagem de ensino não quer.
+      #
+      #   DL3059 (info) — "Multiple consecutive RUN instructions". Consolidar os RUN
+      #   exigiria reescrever o Dockerfile, e as camadas separadas existem ali para
+      #   o aluno ler cada etapa isoladamente.
+      #
+      # Qualquer achado de nível error continua derrubando o job.
       - name: Lint do Dockerfile com hadolint
-        run: docker run --rm -i hadolint/hadolint < docker/Dockerfile
+        run: docker run --rm -i hadolint/hadolint --ignore DL3008 --ignore DL3059 - < docker/Dockerfile
 
       # Valida a sintaxe e a integridade do docker-compose.yml sem subir os serviços
       # TODO: se você tiver um ambiente de testes disponível, pode estender este step
