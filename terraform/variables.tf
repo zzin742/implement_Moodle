@@ -33,6 +33,10 @@ variable "ec2_public_key" {
 variable "ssh_allowed_cidr" {
   description = "CIDR block allowed to SSH into EC2"
   type        = string
+  # Marcada como sensitive porque contém dado pessoal (não é segredo criptográfico):
+  # o IP residencial/corporativo do operador com /32 revela o endereço de onde ele trabalha.
+  # Em repositório público, esse valor apareceria no GITHUB_STEP_SUMMARY do terraform plan.
+  sensitive = true
 
   validation {
     condition     = var.ssh_allowed_cidr != "0.0.0.0/0"
