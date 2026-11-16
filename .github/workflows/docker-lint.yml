@@ -48,6 +48,14 @@ jobs:
       # `--ignore` como binario e sai com 127.
         run: docker run --rm -i hadolint/hadolint hadolint --ignore DL3008 --ignore DL3059 - < docker/Dockerfile
 
+      # O docker-compose.yml le `env_file: .env`, e o .env e gitignorado — ele
+      # carrega senha. No runner o arquivo nao existe, e o `config` falha com
+      # "env file ... not found" antes de validar qualquer coisa. Criar o .env a
+      # partir do exemplo e o mesmo passo que o docker/.env.example manda o
+      # desenvolvedor dar; aqui os valores sao placeholders, e nenhum servico sobe.
+      - name: Preparar .env a partir do exemplo
+        run: cp docker/.env.example docker/.env
+
       # Valida a sintaxe e a integridade do docker-compose.yml sem subir os serviços
       # TODO: se você tiver um ambiente de testes disponível, pode estender este step
       #       executando `docker compose -f docker/docker-compose.yml up --build -d`
