@@ -22,6 +22,10 @@ systemctl start docker
 # 3. Instalar Docker Compose v2 como plugin
 # Amazon Linux 2023 não inclui docker-compose no dnf
 # Versão fixada para evitar falha se API do GitHub atingir rate limit
+# TODO: o nome do binario abaixo chumba a arquitetura (linux-x86_64). Funciona
+# porque var.instance_type e da familia t3 (x86). Numa familia Graviton (t4g,
+# m7g) o download traz o binario errado e `docker compose version` falha com
+# "exec format error". Derivar o sufixo de `uname -m` resolveria.
 echo ">> Instalando Docker Compose v2..."
 DOCKER_CONFIG=/usr/local/lib/docker
 DOCKER_COMPOSE_VERSION="v2.29.7"
