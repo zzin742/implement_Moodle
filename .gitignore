@@ -168,3 +168,7 @@ vite.config.ts.timestamp-*
 # Diretorio de trabalho do terraform init: contem symlinks para o cache
 # local de providers (centenas de MB) e nao faz sentido versionar.
 .terraform/
+
+# Planos salvos do terraform: contem os valores das variaveis sensiveis
+# (senha do RDS, senha do admin) em texto recuperavel.
+*.tfplan

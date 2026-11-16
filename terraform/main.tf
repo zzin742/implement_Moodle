@@ -30,10 +30,10 @@ module "compute" {
   ec2_security_group_id = module.networking.ec2_security_group_id
 
   # Database connection info for user_data
-  rds_endpoint = module.database.rds_endpoint
-  db_name      = var.db_name
-  db_username  = var.db_username
-  db_password  = var.db_password
+  rds_address = module.database.rds_address
+  db_name     = var.db_name
+  db_username = var.db_username
+  db_password = var.db_password
 
   # Moodle configuration
   repo_url              = var.repo_url

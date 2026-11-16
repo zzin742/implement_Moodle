@@ -10,8 +10,11 @@ rds_instance_class = "db.t3.micro"
 # TODO: Substitua pela sua chave pública SSH (cat ~/.ssh/id_rsa.pub)
 ec2_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ..."
 
-# TODO: Restrinja ao seu IP para segurança (obtenha em https://ifconfig.me)
-ssh_allowed_cidr = "0.0.0.0/0" # ATENÇÃO: aberto para qualquer IP - restrinja em produção!
+# TODO: Obrigatório - especifique seu IP público para acesso SSH
+# Descubra seu IP: curl -s https://checkip.amazonaws.com
+# Formato: "SEU.IP.AQUI/32" (ex: "203.0.113.45/32")
+# NUNCA use 0.0.0.0/0 - a validação do Terraform vai rejeitar
+ssh_allowed_cidr = "203.0.113.45/32" # Substitua pelo seu IP real!
 
 # TODO: Use credenciais fortes e únicas
 db_username = "moodle"

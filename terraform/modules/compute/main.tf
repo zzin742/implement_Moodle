@@ -69,10 +69,10 @@ resource "aws_instance" "moodle" {
   }
 
   # User data para inicialização - renderizado via templatefile()
-  # Variáveis Terraform (sem $): ${rds_endpoint}, ${db_name}, etc
+  # Variáveis Terraform (sem $): ${rds_address}, ${db_name}, etc
   # Variáveis shell (com $$): $${VARIABLE} - escapadas para não serem interpretadas pelo Terraform
   user_data = templatefile("${path.module}/user_data.sh", {
-    rds_endpoint          = var.rds_endpoint
+    rds_address           = var.rds_address
     db_name               = var.db_name
     db_username           = var.db_username
     db_password           = var.db_password

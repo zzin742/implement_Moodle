@@ -4,8 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       moodle_url:
-        # TODO: Após o deploy na AWS, substitua o valor padrão pelo DNS público da sua instância EC2
-        #       (ex: http://ec2-XX-XX-XX-XX.compute-1.amazonaws.com)
+        # O DNS público da EC2 muda a cada recriação da instância (não há Elastic IP).
+        # Por isso não faz sentido chumbar um valor aqui. O default aponta para ambiente
+        # local (localhost:8080), que é o único endereço estável entre deploys.
+        # Para verificar a instância AWS, passe a URL manualmente ao disparar o workflow.
         description: "URL do Moodle a verificar (ex: http://<EC2_DNS>)"
         required: true
         default: "http://localhost:8080"

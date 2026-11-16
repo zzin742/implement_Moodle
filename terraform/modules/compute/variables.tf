@@ -26,8 +26,8 @@ variable "ec2_security_group_id" {
   type        = string
 }
 
-variable "rds_endpoint" {
-  description = "RDS endpoint for database connection"
+variable "rds_address" {
+  description = "RDS hostname (address only, without port) for database connection"
   type        = string
 }
 

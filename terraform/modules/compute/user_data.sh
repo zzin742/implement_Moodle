@@ -7,7 +7,7 @@ set -euo pipefail
 exec > >(tee -a /var/log/user-data.log)
 exec 2>&1
 
-echo "===== Iniciando configuração do Moodle $$(date) ====="
+echo "===== Iniciando configuração do Moodle $(date) ====="
 
 # 1. Atualizar sistema e instalar dependências
 echo ">> Atualizando sistema e instalando Docker..."
@@ -50,7 +50,19 @@ fi
 
 cd "$${MOODLE_DIR}/docker"
 
-# 5. Criar arquivo .env com credenciais do RDS
+# 5. Criar docker-compose.override.yml para expor porta 80
+# O docker-compose.yml do repo publica "8080:80" para ambiente local
+# Em produção na AWS, o security group abre porta 80, então precisamos "80:80"
+# Override substitui a configuração de ports do arquivo original
+echo ">> Criando docker-compose.override.yml para porta 80..."
+cat > docker-compose.override.yml <<'OVERRIDE_EOF'
+services:
+  moodle:
+    ports:
+      - "80:80"
+OVERRIDE_EOF
+
+# Criar arquivo .env com credenciais do RDS
 echo ">> Criando arquivo .env com configurações do banco RDS..."
 # Criar arquivo com permissão restrita ANTES de escrever conteúdo
 # Evita janela onde arquivo existe com 644 e credenciais expostas
@@ -64,7 +76,7 @@ cat > .env <<'EOF'
 # TODO: Migrar para AWS Secrets Manager em produção para rotação automática
 
 MOODLE_DATABASE_TYPE=pgsql
-MOODLE_DATABASE_HOST=${rds_endpoint}
+MOODLE_DATABASE_HOST=${rds_address}
 MOODLE_DATABASE_NAME=${db_name}
 MOODLE_DATABASE_USER=${db_username}
 MOODLE_DATABASE_PASSWORD=${db_password}
@@ -74,7 +86,6 @@ MOODLE_PASSWORD=${moodle_admin_password}
 MOODLE_SITE_NAME=${moodle_site_name}
 EOF
 
-# 6. Subir Moodle com Docker Compose
 # CRÍTICO: usar --no-deps para não subir o serviço 'db' local do Compose
 # O docker-compose.yml define serviço 'db' (Postgres local) para desenvolvimento
 # Em produção usamos RDS, não o Postgres local
@@ -82,20 +93,20 @@ EOF
 echo ">> Iniciando Moodle com Docker Compose..."
 docker compose up -d --build --no-deps moodle
 
-# 7. Aguardar inicialização
+# 8. Aguardar inicialização
 echo ">> Aguardando inicialização do Moodle..."
 sleep 30
 
-# 8. Verificar status
+# 9. Verificar status
 echo ">> Status dos contêineres:"
 docker compose ps
 
-# 9. Obter hostname público via IMDSv2
+# 10. Obter hostname público via IMDSv2
 # IMDSv2 exige token de sessão - sem token retorna 401
-TOKEN=$$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
+TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" \
   -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
-PUBLIC_HOSTNAME=$$(curl -s -H "X-aws-ec2-metadata-token: $${TOKEN}" \
+PUBLIC_HOSTNAME=$(curl -s -H "X-aws-ec2-metadata-token: $${TOKEN}" \
   http://169.254.169.254/latest/meta-data/public-hostname)
 
-echo "===== Configuração concluída $$(date) ====="
+echo "===== Configuração concluída $(date) ====="
 echo ">> Moodle deve estar acessível em: http://$${PUBLIC_HOSTNAME}"
