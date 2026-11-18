@@ -46,7 +46,12 @@ web_modules/
 
 # TypeScript cache
 *.tsbuildinfo
-.kiro/
+
+# O Kiro guarda cache e estado de sessao em .kiro/, que nao se versiona.
+# As Specs, porem, sao entregavel: elas documentam requisitos, design e tarefas
+# de cada modulo e precisam viajar com o repositorio.
+.kiro/*
+!.kiro/specs/
 
 # Optional npm cache directory
 .npm
