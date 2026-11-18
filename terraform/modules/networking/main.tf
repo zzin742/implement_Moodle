@@ -13,7 +13,7 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Subnet pública para EC2 (AZ us-east-1a)
+# Subnet pública 1, onde a EC2 roda (AZ us-east-1a)
 # map_public_ip_on_launch = true garante IP público automático para instâncias
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
@@ -23,6 +23,27 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name = "${var.project_name}-public-subnet-1a"
+  }
+}
+
+# Subnet pública 2 (AZ us-east-1b)
+#
+# Não há nada rodando nela hoje: a EC2 é única e fica na 1a. Ela existe porque
+# subnet pública numa AZ só é um ponto único de falha estrutural — qualquer
+# recurso que exija alta disponibilidade (um ALB, um Auto Scaling Group) precisa
+# de pelo menos duas AZs e a API recusa criar com uma. Deixar a segunda pronta
+# transforma essa evolução em mudança de uma linha.
+#
+# É o mesmo motivo das duas subnets privadas, onde a exigência já é obrigatória
+# hoje por causa do aws_db_subnet_group.
+resource "aws_subnet" "public_1b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.4.0/24"
+  availability_zone       = "us-east-1b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project_name}-public-subnet-1b"
   }
 }
 
@@ -76,6 +97,15 @@ resource "aws_route_table" "public" {
 # Associação da route table pública à subnet pública
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
+# A segunda subnet pública precisa da MESMA route table. Sem esta associação ela
+# herdaria a route table principal da VPC, que só tem a rota local — seria uma
+# subnet "pública" sem saída para a internet, e o erro só apareceria no dia em
+# que algo fosse lançado nela.
+resource "aws_route_table_association" "public_1b" {
+  subnet_id      = aws_subnet.public_1b.id
   route_table_id = aws_route_table.public.id
 }
 

@@ -1,37 +1,42 @@
-# ATENÇÃO: Este workflow requer credenciais AWS REAIS para executar com sucesso.
+# Terraform Plan
 #
-# O terraform plan deste projeto consulta data sources (aws_ami e aws_iam_instance_profile)
-# que fazem chamadas à API da AWS. Sem credenciais válidas, o workflow falha no PLAN, não no init.
+# PRÉ-REQUISITO — Secrets do repositório (Settings → Secrets and variables → Actions):
 #
-# Secrets obrigatórios:
-#   - AWS_ACCESS_KEY_ID
-#   - AWS_SECRET_ACCESS_KEY
-#   - AWS_SESSION_TOKEN (obrigatório no AWS Academy Learner Lab - credenciais STS temporárias)
-#   - TF_VAR_ec2_public_key (chave SSH pública)
-#   - TF_VAR_db_username (usuário do banco)
-#   - TF_VAR_db_password (senha do banco)
-#   - TF_VAR_moodle_admin_password (senha do admin do Moodle)
-#   - TF_VAR_ssh_allowed_cidr (CIDR permitido para SSH, ex: "203.0.113.45/32")
+#   AWS_ACCESS_KEY_ID       Access Key ID das credenciais temporárias do Learn Lab
+#   AWS_SECRET_ACCESS_KEY   Secret Access Key
+#   AWS_SESSION_TOKEN       Session Token — obrigatório no Learn Lab, que usa STS
 #
-# Abordagem escolhida: variáveis via TF_VAR_* secrets
-# Por quê: Secrets são mais seguros que arquivos .tfvars.ci commitados ou gerados dinamicamente
-# no workflow (que podem vazar em logs). TF_VAR_* é lido automaticamente pelo Terraform sem
-# necessidade de -var ou -var-file explícitos.
+#   TF_VAR_ec2_public_key        chave pública SSH
+#   TF_VAR_db_username           usuário do banco
+#   TF_VAR_db_password           senha do banco
+#   TF_VAR_moodle_admin_password senha do admin do Moodle
+#   TF_VAR_ssh_allowed_cidr      CIDR autorizado a abrir SSH, com máscara /32
 #
-# POR QUE APENAS workflow_dispatch (sem push/pull_request automáticos):
-# As credenciais do AWS Academy Learner Lab expiram em 4 horas. Com gatilhos automáticos em
-# push ou pull_request, qualquer commit que toque terraform/** dispararia um plan que falha
-# na autenticação, porque os secrets AWS estarão vencidos quase sempre (uma sessão do Lab dura
-# 4h, mas commits acontecem o tempo todo). O resultado seria um workflow cronicamente vermelho
-# por motivo que não tem relação com a qualidade do código.
+# As cinco últimas entram como TF_VAR_* no ambiente, e não por `-var` na linha de
+# comando: argumento de linha de comando aparece no log do runner, variável de
+# ambiente não.
 #
-# Com workflow_dispatch apenas, o plan roda quando o operador atualiza os secrets com credenciais
-# frescas do portal AWS Academy e dispara manualmente — que é o único momento em que ele pode
-# funcionar. Esta escolha é deliberada e adequada ao ambiente educacional do Learner Lab.
+# O `terraform plan` deste projeto PRECISA de credenciais AWS válidas, porque há
+# dois data sources — `aws_ami` e `aws_iam_instance_profile` — que consultam a
+# conta de verdade. Sem os secrets, a falha acontece no PLAN, não no init: o init
+# roda com `-backend=false` e nem toca na AWS.
+#
+# As credenciais do AWS Academy Learner Lab expiram em 4 HORAS. Um PR aberto
+# fora da janela de uma sessão ativa do lab vai falhar na autenticação, e isso
+# não diz nada sobre a qualidade do código. Antes de abrir o PR, atualize os três
+# secrets da AWS com credenciais frescas do portal.
 
 name: Terraform Plan
 
 on:
+  # O enunciado pede execução a cada Pull Request, com o plano publicado como
+  # comentário na PR.
+  pull_request:
+    branches:
+      - main
+
+  # Execução manual, para rodar de novo depois de renovar os secrets sem
+  # precisar fechar e reabrir a PR.
   workflow_dispatch:
     inputs:
       terraform_dir:
@@ -40,14 +45,27 @@ on:
         default: 'terraform'
         type: string
 
+# O comentário na PR exige escrita; o resto é leitura.
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   terraform-plan:
     runs-on: ubuntu-latest
-    
+
+    # Em workflow_dispatch o input existe; num pull_request ele vem vazio, e o
+    # `||` devolve o padrão.
+    env:
+      TF_DIR: ${{ inputs.terraform_dir || 'terraform' }}
+
     steps:
+      # Traz o código da branch da PR para o runner
       - name: Checkout código
         uses: actions/checkout@v4
-      
+
+      # Injeta as credenciais temporárias do Learner Lab. O session token é
+      # obrigatório: sem ele a autenticação falha mesmo com key e secret certos.
       - name: Configurar credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -55,28 +73,97 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
-      
+
+      # Instala o Terraform CLI no runner
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-      
+        with:
+          # O wrapper do setup-terraform captura stdout dos comandos, mas aqui a
+          # saída do plan é lida de um arquivo — desligar evita log duplicado.
+          terraform_wrapper: false
+
+      # Baixa os providers. -backend=false porque não há backend remoto
+      # configurado: o state deste projeto é local e descartável.
       - name: Terraform Init
         run: terraform init -backend=false
-        working-directory: ${{ inputs.terraform_dir || 'terraform' }}
-      
+        working-directory: ${{ env.TF_DIR }}
+
+      # Sintaxe e consistência interna. Não consulta a AWS, então falha aqui é
+      # sempre erro de código.
+      - name: Terraform Validate
+        run: terraform validate
+
+        working-directory: ${{ env.TF_DIR }}
+
+      # Gera o plano. continue-on-error deixa o job seguir até publicar o
+      # comentário na PR mesmo quando o plan falha — sem isso, o erro ficaria só
+      # no log e a PR não mostraria nada. O step final reprova o job.
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
-        working-directory: ${{ inputs.terraform_dir || 'terraform' }}
+        id: plan
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+        working-directory: ${{ env.TF_DIR }}
         env:
           TF_VAR_ec2_public_key: ${{ secrets.TF_VAR_ec2_public_key }}
           TF_VAR_db_username: ${{ secrets.TF_VAR_db_username }}
           TF_VAR_db_password: ${{ secrets.TF_VAR_db_password }}
           TF_VAR_moodle_admin_password: ${{ secrets.TF_VAR_moodle_admin_password }}
           TF_VAR_ssh_allowed_cidr: ${{ secrets.TF_VAR_ssh_allowed_cidr }}
-      
+
+      # Publica o plano como comentário na PR. Só roda em pull_request: num
+      # workflow_dispatch não existe PR para comentar.
+      - name: Comentar o plano na PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+
+            const resultado = '${{ steps.plan.outcome }}'
+            const icone = resultado === 'success' ? '✅' : '❌'
+
+            const bruto = fs.readFileSync('${{ env.TF_DIR }}/plan.txt', 'utf8')
+
+            // O comentário do GitHub tem limite de 65536 caracteres. Um plano
+            // grande estoura isso e a API devolve 422 — o corte mantém o fim,
+            // que é onde está o resumo "N to add" e a mensagem de erro.
+            const LIMITE = 60000
+            const cortado = bruto.length > LIMITE
+            const texto = cortado ? bruto.slice(-LIMITE) : bruto
+            const aviso = cortado ? '\n> Saída truncada: veja o log completo na aba Actions.\n' : ''
+
+            const corpo = [
+              `## ${icone} Terraform Plan — \`${resultado}\``,
+              aviso,
+              '```terraform',
+              texto,
+              '```',
+            ].join('\n')
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: corpo,
+            })
+
+      # O mesmo plano no resumo do job, para quem abre direto pela aba Actions
       - name: Resumo do Plan
+        if: always()
         run: |
-          echo "## Terraform Plan" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          terraform show -no-color tfplan >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-        working-directory: ${{ inputs.terraform_dir || 'terraform' }}
+          echo "## Terraform Plan" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat plan.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+        working-directory: ${{ env.TF_DIR }}
+
+      # O continue-on-error acima esconderia a falha do plan e o job terminaria
+      # verde. Este step existe para devolver a reprovação ao job, depois de o
+      # comentário já ter sido publicado.
+      - name: Reprovar se o plan falhou
+        if: steps.plan.outcome == 'failure'
+        run: |
+          echo "terraform plan falhou. O comentário na PR traz a saída completa."
+          exit 1

@@ -19,9 +19,24 @@ variable "vpc_cidr" {
 }
 
 variable "ec2_instance_type" {
-  description = "EC2 instance type for Moodle"
+  description = <<-TXT
+    Tipo da instância EC2.
+
+    O default é t3.micro, que é o que o enunciado da prova pede. Vale registrar
+    uma medição que contraria esse valor: o user_data constrói a imagem Docker
+    na própria instância, compilando nove extensões PHP, e esse build consumiu
+    bem mais que 1 GB de RAM. No apply real deste projeto a instância usada foi
+    t3.medium (2 vCPU, 4 GB) e o Moodle subiu em cerca de cinco minutos.
+
+    Com t3.micro o passo do `gd` é o candidato a ser morto por OOM, e o sintoma
+    engana: o `terraform apply` termina verde, a instância sobe, e só o
+    /var/log/user-data.log mostra o build interrompido.
+
+    Por isso é variável, e não constante: quem for aplicar pode subir para
+    t3.medium sem tocar no código.
+  TXT
   type        = string
-  default     = "t3.medium"
+  default     = "t3.micro"
 }
 
 variable "ec2_public_key" {
