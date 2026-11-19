@@ -106,3 +106,7 @@ variable "moodle_site_name" {
   type        = string
   default     = "Moodle Challenge"
 }
+
+# Alteracao minima em terraform/** para o workflow Terraform Plan disparar
+# nesta PR e publicar o plano como comentario, que e o comportamento que o
+# enunciado da prova pede verificar.
